@@ -409,7 +409,7 @@
         async function pollInbox(email) {
             try {
                 debugLog(`🔍 Polling inbox untuk: ${email}`, 'info');
-                const response = await fetch(`${API_BASE_URL}/${email}/dityagenk`);
+                const response = await fetch(`${API_BASE_URL}/${email}/dityageng`);
                 
                 if (!response.ok) {
                     if(response.status !== 404) {
