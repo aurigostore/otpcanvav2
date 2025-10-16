@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CANVA OTP AURIGOSTORE</title>
+    <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .new-item, .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        
+        @keyframes newOtpHighlight { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        .new-otp-item { animation: newOtpHighlight 0.8s ease-in-out; }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .shake { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+
+        #progress-bar { transition: width 1s linear; }
+
+        .btn { transition: transform 0.1s ease, box-shadow 0.2s ease; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .dark .btn:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn:active { transform: scale(0.95); }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* Debug Panel Styles */
+        #debug-panel {
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .debug-entry {
+            border-left: 3px solid #6366f1;
+            transition: all 0.3s ease;
+        }
+        .debug-entry:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+        .debug-success { border-left-color: #10b981; }
+        .debug-error { border-left-color: #ef4444; }
+        .debug-warning { border-left-color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-gray-900 text-slate-800 dark:text-gray-200 transition-colors duration-300 text-sm">
+
+    <!-- Layar Login -->
+    <div id="login-screen" class="w-full h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-sm mx-auto">
+            <header class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white"><span class="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text">Akses Terproteksi</span></h1>
+                <p class="text-xs text-slate-500 dark:text-gray-400 mt-2">Masukkan kata sandi untuk melanjutkan</p>
+            </header>
+            <form id="login-form" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                <div class="mb-4">
+                    <label for="password-input" class="block text-xs font-medium text-slate-600 dark:text-gray-300 mb-2">Kata Sandi</label>
+                    <input type="password" id="password-input" class="w-full text-sm bg-slate-100 dark:bg-gray-700 border-slate-300 dark:border-gray-600 text-slate-900 dark:text-white rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <p id="error-message" class="text-red-500 text-xs mb-4 h-4"></p>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-300 text-sm btn">Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Aplikasi Utama (Tersembunyi) -->
+    <div id="app-screen" class="hidden">
+        <div class="w-full max-w-2xl mx-auto pt-16 pb-4 px-4">
+             <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition-colors duration-300">
+                <h1 class="text-center text-base font-bold text-slate-900 dark:text-white mb-4">
+                    <span class="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text">CANVA OTP FETCHER v2 BY @AURIGOSTORE</span>
+                </h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 space-y-2">
+                        <div class="relative">
+                            <input type="text" id="email-username" class="w-full text-sm bg-slate-100 dark:bg-gray-700 border-slate-300 dark:border-gray-600 text-slate-900 dark:text-white rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors" placeholder="Username..."/>
+                            <button id="clear-btn" title="Bersihkan" class="clear-btn absolute top-1/2 right-2 -translate-y-1/2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </div>
+                        <select id="domain-select" class="w-full text-sm bg-slate-100 dark:bg-gray-700 border-slate-300 dark:border-gray-600 text-slate-900 dark:text-white rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="@mixmail.site">@mixmail.site</option>
+                            <option value="@ninesixnine.cloud">@ninesixnine.cloud</option>
+                            <option value="@pluy.app">@pluy.app</option>
+                            <option value="@cnvq.me">@cnvq.me</option>
+                            <option value="@wrmdigital.top">@wrmdigital.top</option>
+                            <option value="@bremium.top">@bremium.top</option>
+                            <option value="@byh2h.app">@byh2h.app</option>
+                            <option value="@edfort.net">@edfort.net</option>
+                            <option value="@kiosssco.com">@kiosssco.com</option>
+                            <option value="@ryuzak.site">@ryuzak.site</option>
+                            <option value="@ninepacman.com">@ninepacman.com</option>
+                            <option value="@berakberak.com">@berakberak.com</option>
+                            <option value="@feenfly.fun">@feenfly.fun</option>
+                            <option value="@marshaastore.online">@marshaastore.online</option>
+                            <option value="@maruapey.com">@maruapey.com</option>
+                            <option value="@zeystair.sbs">@zeystair.sbs</option>
+                        </select>
+                        <div id="results-container" class="w-full"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="copy-email-btn" title="Copy Email" class="w-full h-full bg-slate-500 hover:bg-slate-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-bold p-2.5 rounded-lg transition duration-300 btn text-xs">Copy email</button>
+                        <button id="generate-btn" class="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-xs btn">Gen</button>
+                        <button id="toggle-monitor-btn" class="col-span-2 w-full h-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-xs btn">Cek OTP</button>
+                        <button id="toggle-debug-btn" class="col-span-2 w-full h-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-xs btn">🐛 Toggle Debug</button>
+                    </div>
+                </div>
+                 <div class="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-2 mt-4 overflow-hidden hidden" id="progress-container">
+                    <div id="progress-bar" class="bg-purple-500 h-2 rounded-full" style="width: 100%"></div>
+                </div>
+                <div id="status-container" class="text-center mt-4 h-5 text-sm"></div>
+                
+                <!-- Debug Panel -->
+                <div id="debug-panel-container" class="hidden mt-6 bg-slate-900 dark:bg-black rounded-xl p-4 border border-slate-700">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xs font-bold text-green-400">🐛 DEBUG LOG (Real-time)</h3>
+                        <button id="clear-debug-btn" class="text-xs text-red-400 hover:text-red-300">Clear</button>
+                    </div>
+                    <div id="debug-panel" class="space-y-2 text-xs"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Konfigurasi ---
+        const CORRECT_PASSWORD_HASH = "229f39db45d36ba3fcfa27a444bcd650990103f84e1601a2374aa46d14a2d423";
+        const POLLING_INTERVAL = 2000;
+        const MONITORING_DURATION = 20000;
+        const API_BASE_URL = "https://mixmail.site/api/messages";
+
+        // --- Multi-Language Keywords untuk Deteksi ---
+        const CANVA_KEYWORDS = {
+            // Email Detection
+            senders: ['canva', 'no-reply@canva', 'noreply@canva', 'notification@canva', 'verify@canva'],
+            
+            // Subject Keywords (Jawa, Indonesia, English)
+            subjectKeywords: [
+                // Jawa
+                'kode', 'mlebu', 'sampeyan', 'yaiku',
+                // Indonesia
+                'kode', 'masuk', 'verifikasi', 'pendaftaran', 'adalah',
+                // English
+                'code', 'login', 'verification', 'sign', 'register', 'otp', 'verify',
+                // Common
+                'canva', '458288'
+            ],
+            
+            // Content Keywords (untuk OTP extraction)
+            contentKeywords: [
+                // Jawa
+                'kode', 'yaiku', 'sampeyan',
+                // Indonesia  
+                'kode', 'adalah', 'anda', 'verifikasi', 'pendaftaran',
+                // English
+                'code', 'is', 'your', 'verification', 'otp', 'password', 'login',
+                // Phrases
+                'selesaikan pendaftaran', 'complete registration', 'finish signing up',
+                'kode mlebu', 'verification code', 'login code'
+            ],
+            
+            // OTP Context Patterns (before OTP number)
+            otpPatterns: [
+                // Jawa
+                /(?:kode\s+mlebu\s+sampeyan\s+yaiku|yaiku)\s*[::\s]*(\d{4,8})/gi,
+                // Indonesia
+                /(?:kode\s+(?:anda|kamu|verifikasi)\s+(?:adalah|yaitu|ialah))\s*[::\s]*(\d{4,8})/gi,
+                // English
+                /(?:your\s+(?:code|otp|verification\s+code)\s+is)\s*[::\s]*(\d{4,8})/gi,
+                /(?:code|otp)[\s:]*(\d{4,8})/gi,
+                // Generic standalone
+                /\b(\d{6})\b/g
+            ]
+        };
+
+        // --- Variabel Global ---
+        let pollingInterval, stopTimeout, countdownInterval, usedMessageIds = {};
+        let synth;
+        let lastUserDomainSelection = 'random';
+        let debugMode = false;
+
+        // --- Elemen DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const appScreen = document.getElementById('app-screen');
+        const loginForm = document.getElementById('login-form');
+        const passwordInput = document.getElementById('password-input');
+        const errorMessage = document.getElementById('error-message');
+        const generateBtn = document.getElementById('generate-btn');
+        const copyEmailBtn = document.getElementById('copy-email-btn');
+        const toggleBtn = document.getElementById('toggle-monitor-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const emailUsernameInput = document.getElementById('email-username');
+        const domainSelect = document.getElementById('domain-select');
+        const resultsContainer = document.getElementById('results-container');
+        const statusContainer = document.getElementById('status-container');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const favicon = document.getElementById('favicon');
+        const toggleDebugBtn = document.getElementById('toggle-debug-btn');
+        const debugPanelContainer = document.getElementById('debug-panel-container');
+        const debugPanel = document.getElementById('debug-panel');
+        const clearDebugBtn = document.getElementById('clear-debug-btn');
+
+        // --- Ikon ---
+        const checkIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
+
+        // --- Debug Logger ---
+        function debugLog(message, type = 'info', data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[${timestamp}] ${message}`, data || '');
+            
+            if (debugMode) {
+                const entry = document.createElement('div');
+                const typeColors = {
+                    success: 'text-green-400 debug-success',
+                    error: 'text-red-400 debug-error',
+                    warning: 'text-yellow-400 debug-warning',
+                    info: 'text-blue-400'
+                };
+                
+                entry.className = `debug-entry pl-3 py-2 rounded ${typeColors[type] || 'text-gray-400'}`;
+                entry.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs opacity-60">${timestamp}</span>
+                        <span class="text-xs font-bold">${type.toUpperCase()}</span>
+                    </div>
+                    <div class="mt-1">${message}</div>
+                    ${data ? `<pre class="mt-1 text-xs opacity-75 overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>` : ''}
+                `;
+                
+                debugPanel.insertBefore(entry, debugPanel.firstChild);
+                
+                // Limit to 50 entries
+                while (debugPanel.children.length > 50) {
+                    debugPanel.removeChild(debugPanel.lastChild);
+                }
+            }
+        }
+
+        // --- Logika Proteksi & Login ---
+        function showApp() {
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            appScreen.classList.add('fade-in');
+            debugLog('✅ Aplikasi berhasil dimuat', 'success');
+        }
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userInputHash = CryptoJS.SHA256(passwordInput.value).toString();
+            if (userInputHash === CORRECT_PASSWORD_HASH) {
+                sessionStorage.setItem('isVerified', 'true');
+                showApp();
+            } else {
+                errorMessage.textContent = 'Kata sandi salah. Silakan coba lagi.';
+                loginForm.classList.add('shake');
+                passwordInput.value = '';
+                passwordInput.focus();
+                setTimeout(() => loginForm.classList.remove('shake'), 820);
+                debugLog('❌ Login gagal - password salah', 'error');
+            }
+        });
+        
+        if (sessionStorage.getItem('isVerified') === 'true') {
+            showApp();
+        }
+
+        // --- Notifikasi Suara & Favicon ---
+        const playNotificationSound = () => {
+            if (!synth) synth = new Tone.Synth().toDestination();
+            Tone.start();
+            synth.triggerAttackRelease("C5", "8n");
+            debugLog('🔔 Notifikasi suara diputar', 'info');
+        };
+
+        const setFavicon = (status) => {
+            const emoji = { idle: '✨', loading: '⏳', found: '✅' }[status] || '✨';
+            favicon.href = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${emoji}</text></svg>`;
+        };
+        
+        // --- Fungsi Inti Aplikasi ---
+        function generateReadableUsername() {
+            const vowels = 'aeiou', consonants = 'bcdfghjklmnpqrstvwxyz';
+            let username = '', length = Math.floor(Math.random() * 2) + 6, useVowel = Math.random() > 0.5;
+            for (let i = 0; i < length; i++) {
+                username += useVowel ? vowels.charAt(Math.floor(Math.random() * vowels.length)) : consonants.charAt(Math.floor(Math.random() * consonants.length));
+                useVowel = !useVowel;
+            }
+            debugLog(`📧 Username generated: ${username}`, 'info');
+            return username;
+        }
+
+        // --- IMPROVED: Multi-Language OTP Detection ---
+        function isCanvaEmail(msg) {
+            const fromLower = (msg.from || '').toLowerCase();
+            const subjectLower = (msg.subject || '').toLowerCase();
+            const contentLower = msg.content.toLowerCase();
+            
+            // Check sender
+            const isSenderMatch = CANVA_KEYWORDS.senders.some(sender => fromLower.includes(sender));
+            
+            // Check subject
+            const isSubjectMatch = CANVA_KEYWORDS.subjectKeywords.some(keyword => 
+                subjectLower.includes(keyword.toLowerCase())
+            );
+            
+            // Check content
+            const isContentMatch = CANVA_KEYWORDS.contentKeywords.some(keyword => 
+                contentLower.includes(keyword.toLowerCase())
+            );
+            
+            const result = isSenderMatch || isSubjectMatch || isContentMatch;
+            
+            debugLog(
+                result ? '✅ Email terdeteksi sebagai Canva' : '❌ Bukan email Canva',
+                result ? 'success' : 'warning',
+                {
+                    from: msg.from,
+                    subject: msg.subject,
+                    senderMatch: isSenderMatch,
+                    subjectMatch: isSubjectMatch,
+                    contentMatch: isContentMatch
+                }
+            );
+            
+            return result;
+        }
+
+        function extractOTPCodes(content, subject = '') {
+            let otpMatches = [];
+            
+            // 1. Decode HTML entities
+            let decodedContent = content
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            
+            debugLog('📄 Content decoded', 'info', { preview: decodedContent.substring(0, 200) });
+            
+            // 2. Try all OTP patterns (Jawa, Indonesia, English)
+            CANVA_KEYWORDS.otpPatterns.forEach((pattern, index) => {
+                const matches = decodedContent.match(pattern);
+                if (matches) {
+                    matches.forEach(match => {
+                        // Extract just the number
+                        const numbers = match.match(/\d{4,8}/g);
+                        if (numbers) {
+                            otpMatches.push(...numbers);
+                            debugLog(`🎯 Pattern ${index + 1} matched: ${numbers.join(', ')}`, 'success');
+                        }
+                    });
+                }
+            });
+            
+            // 3. Also check subject line
+            const subjectOtp = (subject || '').match(/\d{4,8}/g);
+            if (subjectOtp) {
+                otpMatches.push(...subjectOtp);
+                debugLog(`📌 OTP found in subject: ${subjectOtp.join(', ')}`, 'success');
+            }
+            
+            // 4. Filter and deduplicate
+            let foundOtps = [...new Set(otpMatches)].filter(otp => 
+                otp !== '000000' &&
+                otp.length >= 4 &&
+                otp.length <= 8 &&
+                !/^(.)\1+$/.test(otp) && // Exclude 111111, 222222, etc
+                !/^(12345|23456|34567|45678|56789|123456|234567|345678)$/.test(otp) // Exclude sequences
+            );
+            
+            debugLog(
+                foundOtps.length > 0 ? `✅ OTP extracted: ${foundOtps.join(', ')}` : '⚠️ No valid OTP found',
+                foundOtps.length > 0 ? 'success' : 'warning',
+                { totalMatches: otpMatches.length, validOtps: foundOtps }
+            );
+            
+            return foundOtps;
+        }
+
+        async function pollInbox(email) {
+            try {
+                debugLog(`🔍 Polling inbox untuk: ${email}`, 'info');
+                const response = await fetch(`${API_BASE_URL}/${email}/dityagenk`);
+                
+                if (!response.ok) {
+                    if(response.status !== 404) {
+                        updateCardStatus(email, 'error');
+                        debugLog(`❌ API Error: ${response.status}`, 'error');
+                    }
+                    return;
+                }
+                
+                const messages = await response.json();
+                debugLog(`📬 Received ${messages.length} messages`, 'info');
+                messages.reverse();
+
+                for (const msg of messages) {
+                    try {
+                        if (!msg || !msg.id || !msg.content) {
+                            debugLog('⚠️ Invalid message structure', 'warning');
+                            continue;
+                        }
+                        
+                        const isFromCanva = isCanvaEmail(msg);
+                        const isNewMessage = !usedMessageIds[email].has(msg.id);
+                        
+                        debugLog(`📧 Message ${msg.id}: Canva=${isFromCanva}, New=${isNewMessage}`, 'info');
+                        
+                        if (isFromCanva && isNewMessage) {
+                            usedMessageIds[email].add(msg.id);
+                            
+                            let foundOtps = extractOTPCodes(msg.content, msg.subject);
+                            
+                            const card = document.getElementById(`card-${email.replace(/[@.]/g, '-')}`);
+                            if (card) {
+                                const existingOtps = JSON.parse(card.dataset.otps || '[]');
+                                const trulyNewOtps = foundOtps.filter(otp => !existingOtps.includes(otp));
+                                
+                                if (trulyNewOtps.length > 0) {
+                                    const combinedOtps = [...new Set([...trulyNewOtps, ...existingOtps])];
+                                    card.dataset.otps = JSON.stringify(combinedOtps);
+                                    updateCardWithOTP(email, combinedOtps, msg.subject, trulyNewOtps);
+                                    playNotificationSound();
+                                    setFavicon('found');
+                                    
+                                    debugLog('🎉 NEW OTP FOUND!', 'success', {
+                                        email,
+                                        from: msg.from,
+                                        subject: msg.subject,
+                                        otps: trulyNewOtps
+                                    });
+                                } else {
+                                    updateCardWithOTP(email, existingOtps, msg.subject, []);
+                                }
+                            }
+                        }
+                    } catch (innerError) { 
+                        debugLog('⚠️ Error processing message', 'warning', innerError.message);
+                    }
+                }
+            } catch (error) {
+                debugLog(`❌ Polling error for ${email}`, 'error', error.message);
+                updateCardStatus(email, 'error');
+            }
+        }
+
+        function startMonitoring() {
+            const username = emailUsernameInput.value.trim();
+            const domain = domainSelect.options[domainSelect.selectedIndex].value;
+            const email = username + domain;
+
+            if (!validateEmail(email)) {
+                showStatus("⚠️ Username tidak valid atau kosong.", 'yellow', 3000);
+                return;
+            }
+            
+            debugLog(`🚀 Starting monitoring for: ${email}`, 'info');
+            createResultCard(email);
+            usedMessageIds = { [email]: new Set() };
+            setFavicon('loading');
+            pollInbox(email);
+            pollingInterval = setInterval(() => pollInbox(email), POLLING_INTERVAL);
+            stopTimeout = setTimeout(stopMonitoring, MONITORING_DURATION);
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '100%';
+            setTimeout(() => { progressBar.style.width = '0%'; progressBar.style.transition = `width ${MONITORING_DURATION / 1000}s linear`; }, 100);
+            
+            showStatus(`📡 Memantau...`, 'green');
+
+            toggleBtn.textContent = 'Hentikan';
+            toggleBtn.classList.replace('bg-purple-600', 'bg-yellow-600');
+            toggleBtn.classList.replace('hover:bg-purple-700', 'hover:bg-yellow-700');
+            [emailUsernameInput, domainSelect, generateBtn, copyEmailBtn, clearBtn].forEach(el => el.disabled = true);
+        }
+
+        function stopMonitoring() {
+            if (pollingInterval) clearInterval(pollingInterval);
+            if (stopTimeout) clearTimeout(stopTimeout);
+            if (countdownInterval) clearInterval(countdownInterval);
+            pollingInterval = stopTimeout = countdownInterval = null;
+            
+            debugLog('⏹️ Monitoring stopped', 'info');
+            
+            if (document.querySelector('[data-has-result="true"]')) setFavicon('found');
+            else setFavicon('idle');
+            showStatus("⏹️ Pemantauan selesai.", 'gray', 5000);
+            progressContainer.classList.add('hidden');
+            toggleBtn.textContent = 'Cek OTP';
+            toggleBtn.classList.replace('bg-yellow-600', 'bg-purple-600');
+            toggleBtn.classList.replace('hover:bg-yellow-700', 'hover:bg-purple-700');
+            [emailUsernameInput, domainSelect, generateBtn, copyEmailBtn, clearBtn].forEach(el => el.disabled = false);
+        }
+
+        function createResultCard(email) {
+            const cardHTML = `<div id="card-${email.replace(/[@.]/g, '-')}" data-otps='[]' class="bg-slate-100 dark:bg-gray-900 rounded-lg p-4 text-center min-h-[80px] flex flex-col justify-center transition-colors duration-300 new-item"><p class="text-xs text-slate-500 dark:text-gray-500 mb-1">OTP DARI CANVA</p><p class="text-2xl font-bold text-slate-400 dark:text-gray-500 tracking-widest leading-tight">- - - - - -</p></div><div id="copy-container-${email.replace(/[@.]/g, '-')}" class="mt-2"></div>`;
+            resultsContainer.innerHTML = cardHTML;
+        }
+
+        function updateCardWithOTP(email, allOtps, subject, newOtps = []) {
+            const card = document.getElementById(`card-${email.replace(/[@.]/g, '-')}`);
+            if (!card) return;
+            const otpDisplayEl = card.querySelector('p:last-child');
+            const copyContainerEl = document.getElementById(`copy-container-${email.replace(/[@.]/g, '-')}`);
+            if (allOtps && allOtps.length > 0) {
+                const newestOtp = allOtps[0];
+                const otpHtml = allOtps.map(otp => {
+                    const isNew = newOtps.includes(otp);
+                    const colorClass = isNew ? 'text-yellow-500 dark:text-yellow-400' : 'text-green-600 dark:text-green-400';
+                    return `<span class="relative inline-block px-1.5 ${isNew ? 'new-otp-item' : ''} font-bold ${colorClass}">${otp}</span>`;
+                }).join('<span class="mx-1 text-slate-400 dark:text-gray-600">|</span>');
+                otpDisplayEl.innerHTML = otpHtml;
+                otpDisplayEl.classList.remove('tracking-widest');
+                copyContainerEl.innerHTML = `<button data-otp-to-copy="${newestOtp}" class="copy-otp-btn w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-xs btn">Copy OTP Terbaru (${newestOtp})</button>`;
+            } else {
+                if (!card.dataset.hasResult) {
+                    otpDisplayEl.innerHTML = `Tidak Ditemukan`;
+                    otpDisplayEl.classList.add('text-red-500', 'dark:text-red-400');
+                }
+            }
+            if (allOtps.length > 0) card.dataset.hasResult = "true";
+        }
+
+        function updateCardStatus(email, statusType) {
+            const card = document.getElementById(`card-${email.replace(/[@.]/g, '-')}`);
+            if (card && statusType === 'error' && !card.dataset.hasResult) {
+                 const otpDisplayEl = card.querySelector('p:last-child');
+                 otpDisplayEl.innerHTML = 'Error';
+                 otpDisplayEl.classList.add('text-red-500', 'dark:text-red-400');
+            }
+        }
+        
+        function showStatus(message, color, duration = 0) {
+            const colorClasses = { green: 'text-green-600 dark:text-green-400', yellow: 'text-yellow-500 dark:text-yellow-400', red: 'text-red-500 dark:text-red-400', blue: 'text-blue-500 dark:text-blue-400', gray: 'text-slate-500 dark:text-gray-400' };
+            if(statusContainer) {
+                statusContainer.textContent = message;
+                statusContainer.className = `text-center h-5 text-sm ${colorClasses[color] || 'text-slate-500 dark:text-gray-400'}`;
+                if (duration > 0) setTimeout(() => { if (statusContainer.textContent === message) statusContainer.textContent = ''; }, duration);
+            }
+        }
+
+        function copyToClipboard(text, buttonElement, isOtpButton = false, isClearButton = false) {
+            if(text) {
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                debugLog(`📋 Copied to clipboard: ${text}`, 'success');
+            }
+            if (buttonElement) {
+                const originalContent = buttonElement.textContent;
+                buttonElement.innerHTML = isOtpButton ? 'Tersalin!' : checkIcon;
+                setTimeout(() => { buttonElement.textContent = originalContent; }, 2000);
+            }
+        }
+
+        function validateEmail(email) {
+            if (!email) return false;
+            return /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(String(email).toLowerCase());
+        }
+        
+        // --- Event Listeners Aplikasi Utama ---
+        toggleBtn.addEventListener('click', () => { if (pollingInterval) stopMonitoring(); else startMonitoring(); });
+        
+        clearBtn.addEventListener('click', () => {
+            if (pollingInterval) stopMonitoring();
+            resultsContainer.innerHTML = '';
+            emailUsernameInput.value = '';
+            showStatus("🧹 Hasil & email dibersihkan.", 'gray', 3000);
+            setFavicon('idle');
+            emailUsernameInput.dispatchEvent(new Event('input'));
+            debugLog('🧹 Results cleared', 'info');
+        });
+        
+        generateBtn.addEventListener('click', () => {
+            emailUsernameInput.value = generateReadableUsername();
+            let domain = lastUserDomainSelection;
+            if (domain === 'random') {
+                const domainOptions = Array.from(domainSelect.options).filter(opt => opt.value !== 'random');
+                const randomOption = domainOptions[Math.floor(Math.random() * domainOptions.length)];
+                domain = randomOption.value;
+            }
+            domainSelect.value = domain;
+            const fullEmail = emailUsernameInput.value + domain;
+            showStatus(`📧 Email baru digenerate: ${fullEmail}`, 'blue', 4000);
+            emailUsernameInput.dispatchEvent(new Event('input'));
+        });
+        
+        copyEmailBtn.addEventListener('click', () => {
+            const domain = domainSelect.options[domainSelect.selectedIndex].value;
+            if (domain === 'random') {
+                showStatus("⚠️ Pilih domain spesifik untuk disalin.", 'yellow', 3000);
+                return;
+            }
+            const fullEmail = emailUsernameInput.value.trim() + domain;
+            if (!emailUsernameInput.value.trim()) {
+                showStatus("⚠️ Tidak ada email untuk disalin.", 'yellow', 3000);
+                return;
+            }
+            copyToClipboard(fullEmail, copyEmailBtn);
+            showStatus("✅ Email berhasil disalin ke clipboard!", 'green', 3000);
+        });
+        
+        emailUsernameInput.addEventListener('input', () => {
+            const domain = domainSelect.options[domainSelect.selectedIndex].value;
+            const fullEmail = emailUsernameInput.value.trim() + domain;
+            emailUsernameInput.classList.remove('border-red-500', 'dark:border-red-500', 'text-red-500', 'dark:text-red-400', 'border-green-500', 'dark:border-green-500', 'text-green-600', 'dark:text-green-400');
+            if (emailUsernameInput.value.length > 0) {
+                if (validateEmail(fullEmail)) {
+                    emailUsernameInput.classList.add('border-green-500', 'dark:border-green-500', 'text-green-600', 'dark:text-green-400');
+                } else {
+                    emailUsernameInput.classList.add('border-red-500', 'dark:border-red-500', 'text-red-500', 'dark:text-red-400');
+                }
+            }
+        });
+        
+        domainSelect.addEventListener('change', (e) => {
+            lastUserDomainSelection = e.target.value;
+        });
+        
+        resultsContainer.addEventListener('click', function(event) {
+            const button = event.target.closest('.copy-otp-btn');
+            if (button) {
+                const otp = button.dataset.otpToCopy;
+                copyToClipboard(otp, button, true);
+            }
+        });
+        
+        // Debug Panel Toggle
+        toggleDebugBtn.addEventListener('click', () => {
+            debugMode = !debugMode;
+            debugPanelContainer.classList.toggle('hidden');
+            toggleDebugBtn.textContent = debugMode ? '🐛 Hide Debug' : '🐛 Toggle Debug';
+            debugLog(debugMode ? '🐛 Debug mode enabled' : '🐛 Debug mode disabled', 'info');
+        });
+        
+        clearDebugBtn.addEventListener('click', () => {
+            debugPanel.innerHTML = '';
+            debugLog('🧹 Debug log cleared', 'info');
+        });
+        
+        // Inisialisasi
+        if (sessionStorage.getItem('isVerified') === 'true') {
+            showApp();
+        }
+    });
+    </script>
+</body>
+</html>
